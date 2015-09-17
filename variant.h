@@ -45,6 +45,35 @@ public:
   constexpr
   variant_base() {}
 
+  constexpr
+  variant_base(const variant_base&) = default;
+  constexpr
+  variant_base(variant_base&&) = default;
+
+  constexpr
+  auto operator = (const variant_base& rhs) ->
+  variant_base&
+  {
+    reset();
+    buffer = rhs.buffer;
+    i = rhs.i;
+    destructor = rhs.destructor;
+
+    return *this;
+  }
+
+  constexpr
+  auto operator = (variant_base&& rhs) ->
+  variant_base&
+  {
+    reset();
+    buffer = std::move(rhs.buffer);
+    i = std::move(rhs.i);
+    destructor = std::move(rhs.destructor);
+
+    return *this;
+  }
+
   ~variant_base()
   {
     reset();
@@ -63,10 +92,11 @@ public:
   constexpr
   void reset()
   {
-    if (i != 0) {
+    if (i != 0) 
       i = 0;
+
+    if (destructor)
       destructor();
-    }
   }
 
 protected:
