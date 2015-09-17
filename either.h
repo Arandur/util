@@ -51,6 +51,29 @@ public:
   constexpr
   void set_right(Args&&...);
 
+  constexpr
+  auto get_left_or(L&) ->
+  L&;
+  template <typename... Args>
+  constexpr
+  auto get_left_or(Args&&...) const ->
+  const L&;
+
+  template <typename F>
+  constexpr
+  auto get_left_or_else(F&&) const ->
+  const L&;
+
+  template <typename F>
+  constexpr
+  auto fmap(F&&) const ->
+  either<std::result_of_t<F(L)>, R>;
+
+  template <typename F>
+  constexpr
+  auto flatmap(F&&) const ->
+  std::result_of_t<F(L)>;
+
 private:
 
   using Base::is;
