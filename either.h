@@ -1,11 +1,12 @@
 #pragma once
 
+#include <cstdint>
+#include <type_traits>
+
 template <typename L, typename R>
 class either
 {
 public:
-
-  either() = delete;
 
   template <typename _L, typename _R>
   constexpr
@@ -58,16 +59,25 @@ public:
 
 private:
 
-  union
-  {
-    L left;
-    R right;
-  };
-  bool _is_left;
+  std::aligned_union_t<0, L, R> buffer;
 
-  template <typename... Args>
+  enum class Side_t : uint8_t
+  {
+    UNINITIALIZED,
+    LEFT,
+    RIGHT
+  } side;
+
   constexpr
-  either(bool, Args&&...);
+  either();
+
+  template <typename _L, typename _R>
+  constexpr
+  either(Side_t, const std::aligned_union_t<0, _L, _R>&);
+
+  template <typename _L, typename _R>
+  constexpr
+  either(Side_t, std::aligned_union_t<0, _L, _R>&&);
 
   template <typename... Args>
   constexpr
@@ -75,13 +85,6 @@ private:
   template <typename... Args>
   constexpr
   void construct_right(Args&&...);
-
-  constexpr
-  void destroy_left();
-  constexpr
-  void destroy_right();
-  constexpr
-  void clear();
 };
 
 #include "either.tcc"

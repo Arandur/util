@@ -12,24 +12,16 @@ public:
 template <typename L, typename R>
 template <typename _L, typename _R>
 constexpr
-either<L, R>::either(const either<_L, _R>& rhs)
-{
-  if (rhs.is_left())
-    construct_left(rhs.left);
-  else
-    construct_right(rhs.right);
-}
+either<L, R>::either(const either<_L, _R>& rhs) :
+  either(rhs.side, rhs.buffer)
+{}
 
 template <typename L, typename R>
 template <typename _L, typename _R>
 constexpr
-either<L, R>::either(either<_L, _R>&& rhs)
-{
-  if (rhs.is_left())
-    construct_left(std::move(rhs.left));
-  else
-    construct_right(std::move(rhs.right));
-}
+either<L, R>::either(either<_L, _R>&& rhs) :
+  either(rhs.side, rhs.buffer)
+{}
 
 template <typename L, typename R>
 template <typename _L, typename _R>
@@ -37,11 +29,18 @@ constexpr
 auto either<L, R>::operator = (const either<_L, _R>& rhs) ->
 either<L, R>&
 {
-  clear();
-  if (rhs.is_left())
-    construct_left(rhs.left);
-  else
-    construct_right(rhs.right);
+  ~either();
+
+  switch (rhs.side) {
+  case Side_t::UNINITIALIZED:
+    break;
+  case Side_t::LEFT:
+    construct_left(reinterpret_cast<const _L&>(rhs.buffer));
+    break;
+  case Side_t::RIGHT:
+    construct_right(reinterpret_cast<const _R&>(rhs.buffer));
+    break;
+  }
 
   return *this;
 }
@@ -52,11 +51,18 @@ constexpr
 auto either<L, R>::operator = (either<_L, _R>&& rhs) ->
 either<L, R>&
 {
-  clear();
-  if (rhs.is_left())
-    construct_left(std::move(rhs.left));
-  else
-    construct_right(std::move(rhs.right));
+  ~either();
+
+  switch (rhs.side) {
+  case Side_t::UNINITIALIZED:
+    break;
+  case Side_t::LEFT:
+    construct_left(reinterpret_cast<_L&&>(rhs.buffer));
+    break;
+  case Side_t::RIGHT:
+    construct_right(reinterpret_cast<_R&&>(rhs.buffer));
+    break;
+  }
 
   return *this;
 }
@@ -64,7 +70,18 @@ either<L, R>&
 template <typename L, typename R>
 either<L, R>::~either()
 {
-  clear();
+  switch (side) {
+  case Side_t::UNINITIALIZED:
+    break;
+  case Side_t::LEFT:
+    reinterpret_cast<L&>(buffer).~L();
+    break;
+  case Side_t::RIGHT:
+    reinterpret_cast<R&>(buffer).~R();
+    break;
+  }
+
+  side = Side_t::UNINITIALIZED;
 }
 
 template <typename L, typename R>
@@ -73,7 +90,9 @@ constexpr
 auto either<L, R>::from_left(Args&&... args) ->
 either<L, R>
 {
-  return either<L, R>(true, std::forward<Args&&>(args)...);
+  either<L, R> res;
+  res.construct_left(std::forward<Args&&>(args)...);
+  return res;
 }
 
 template <typename L, typename R>
@@ -82,7 +101,9 @@ constexpr
 auto either<L, R>::from_right(Args&&... args) ->
 either<L, R>
 {
-  return either<L, R>(false, std::forward<Args&&>(args)...);
+  either<L, R> res;
+  res.construct_right(std::forward<Args&&>(args)...);
+  return res;
 }
 
 template <typename L, typename R>
@@ -90,7 +111,7 @@ constexpr
 auto either<L, R>::is_left() const noexcept ->
 bool
 {
-  return _is_left;
+  return side == Side_t::LEFT;
 }
 
 template <typename L, typename R>
@@ -98,7 +119,7 @@ constexpr
 auto either<L, R>::is_right() const noexcept ->
 bool
 {
-  return ! _is_left;
+  return side == Side_t::RIGHT;
 }
 
 template <typename L, typename R>
@@ -107,7 +128,7 @@ auto either<L, R>::get_left() ->
 L&
 {
   if (is_left())
-    return left;
+    return reinterpret_cast<L&>(buffer);
   else
     throw bad_access_exception("Attempted to access left when no left exists");
 }
@@ -118,7 +139,7 @@ auto either<L, R>::get_left() const ->
 const L&
 {
   if (is_left())
-    return left;
+    return reinterpret_cast<const L&>(buffer);
   else
     throw bad_access_exception("Attempted to access left when no left exists");
 }
@@ -129,7 +150,7 @@ auto either<L, R>::get_right() ->
 R&
 {
   if (is_right())
-    return right;
+    return reinterpret_cast<R&>(buffer);
   else
     throw bad_access_exception("Attempted to access right when no right exists");
 }
@@ -140,20 +161,51 @@ auto either<L, R>::get_right() const ->
 const R&
 {
   if (is_right())
-    return right;
+    return reinterpret_cast<const R&>(buffer);
   else
     throw bad_access_exception("Attempted to access right when no right exists");
 }
 
 template <typename L, typename R>
-template <typename... Args>
 constexpr
-either<L, R>::either(bool __is_left, Args&&... args)
+either<L, R>::either() :
+  side(Side_t::UNINITIALIZED)
+{}
+
+template <typename L, typename R>
+template <typename _L, typename _R>
+constexpr
+either<L, R>::either(Side_t _side, const std::aligned_union_t<0, _L, _R>& buffer) :
+  side(_side)
 {
-  if (__is_left)
-    construct_left(std::forward<Args&&>(args)...);
-  else
-    construct_right(std::forward<Args&&>(args)...);
+  switch (side) {
+  case Side_t::UNINITIALIZED:
+    break;
+  case Side_t::LEFT:
+    construct_left(reinterpret_cast<const _L&>(buffer));
+    break;
+  case Side_t::RIGHT:
+    construct_right(reinterpret_cast<const _R&>(buffer));
+    break;
+  }
+}
+
+template <typename L, typename R>
+template <typename _L, typename _R>
+constexpr
+either<L, R>::either(Side_t _side, std::aligned_union_t<0, _L, _R>&& buffer) :
+  side(_side)
+{
+  switch (side) {
+  case Side_t::UNINITIALIZED:
+    break;
+  case Side_t::LEFT:
+    construct_left(reinterpret_cast<_L&&>(buffer));
+    break;
+  case Side_t::RIGHT:
+    construct_right(reinterpret_cast<_R&&>(buffer));
+    break;
+  }
 }
 
 template <typename L, typename R>
@@ -161,8 +213,8 @@ template <typename... Args>
 constexpr
 void either<L, R>::construct_left(Args&&... args)
 {
-  new (std::addressof(left)) L(std::forward<Args&&>(args)...);
-  _is_left = true;
+  new (&buffer) L(std::forward<Args&&>(args)...);
+  side = Side_t::LEFT;
 }
 
 template <typename L, typename R>
@@ -170,30 +222,6 @@ template <typename... Args>
 constexpr
 void either<L, R>::construct_right(Args&&... args)
 {
-  new (std::addressof(right)) R(std::forward<Args&&>(args)...);
-  _is_left = false;
-}
-
-template <typename L, typename R>
-constexpr
-void either<L, R>::destroy_left()
-{
-  left.~L();
-}
-
-template <typename L, typename R>
-constexpr
-void either<L, R>::destroy_right()
-{
-  right.~R();
-}
-
-template <typename L, typename R>
-constexpr
-void either<L, R>::clear()
-{
-  if (_is_left)
-    destroy_left();
-  else
-    destroy_right();
+  new (&buffer) R(std::forward<Args&&>(args)...);
+  side = Side_t::RIGHT;
 }
