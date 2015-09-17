@@ -19,15 +19,105 @@ struct nth<0, T, Args...>
 template <size_t N, typename... Args>
 using nth_t = typename nth<N, Args...>::type;
 
-template <typename... Args>
-class variant
+template <template <typename> class Pred, typename T, typename... Args>
+struct all
+{
+  constexpr static bool value = Pred<T>::value && all<Pred, Args...>::value;
+};
+
+template <template <typename> class Pred, typename T>
+struct all<Pred, T>
+{
+  constexpr static bool value = Pred<T>::value;
+};
+
+template <template <typename> class Pred, typename... Args>
+constexpr auto all_v = all<Pred, Args...>::value;
+
+template <
+  template <typename...> class Derived,
+  bool ProvideDestructor,
+  typename... Args>
+class variant_base
 {
 public:
 
   constexpr
-  variant();
+  variant_base() {}
 
-  ~variant();
+  ~variant_base()
+  {
+    reset();
+  }
+
+  template <size_t N, typename... cArgs>
+  constexpr
+  void set(cArgs&&... args)
+  {
+    reset();
+    new (&buffer) nth_t<N, Args...>(std::forward<cArgs&&>(args)...);
+    i = N + 1;
+    destructor = [this] { reinterpret_cast<nth_t<N, Args...>&>(buffer).~nth_t<N, Args...>(); };
+  }
+
+  constexpr
+  void reset()
+  {
+    if (i != 0) {
+      i = 0;
+      destructor();
+    }
+  }
+
+protected:
+
+  std::aligned_union_t<0, Args...> buffer;
+  size_t i = 0;
+
+private:
+  std::function<void()> destructor;
+};
+
+template <
+  template <typename> class Derived,
+  typename... Args>
+class variant_base<Derived, false, Args...>
+{
+public:
+
+  constexpr
+  variant_base() {}
+
+  template <size_t N, typename... cArgs>
+  constexpr
+  void set(cArgs&&... args)
+  {
+    new (&buffer) nth_t<N, Args...>(std::forward<cArgs&&>(args)...);
+    i = N + 1;
+  }
+
+  constexpr
+  void reset()
+  {
+    i = 0;
+  }
+
+protected:
+
+  std::aligned_union_t<0, Args...> buffer;
+  size_t i = 0;
+};
+
+template <
+  typename... Args>
+class variant :
+  public variant_base<variant, ! all<std::is_trivially_destructible, Args...>::value, Args...>
+{
+  typedef variant_base<variant, ! all<std::is_trivially_destructible, Args...>::value, Args...> Base;
+public:
+
+  constexpr
+  variant();
 
   template <size_t N>
   constexpr
@@ -48,18 +138,13 @@ public:
   auto get() const ->
   const nth_t<N, Args...>&;
 
-  template <size_t N, typename... cArgs>
-  constexpr
-  void set(cArgs&&...);
-
-  constexpr
-  void reset();
+  using Base::set;
+  using Base::reset;
 
 private:
 
-  std::aligned_union_t<0, Args...> buffer;
-  size_t i = 0;
-  std::function<void()> destructor;
+  using Base::buffer;
+  using Base::i;
 };
 
 #include "variant.tcc"
