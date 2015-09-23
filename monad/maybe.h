@@ -24,6 +24,13 @@ public:
   maybe<T>;
 
   constexpr
+  operator bool () const;
+
+  constexpr
+  auto operator ! () const ->
+  bool;
+
+  constexpr
   auto has_value() const ->
   bool;
 

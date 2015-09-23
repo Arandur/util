@@ -27,6 +27,22 @@ maybe<T>
 
 template <typename T>
 constexpr
+maybe<T>::operator bool() const ->
+bool
+{
+  return has_value();
+}
+
+template <typename T>
+constexpr
+auto maybe<T>::operator ! () const ->
+bool
+{
+  return ! has_value();
+}
+
+template <typename T>
+constexpr
 auto maybe<T>::has_value() const ->
 bool
 {
