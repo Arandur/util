@@ -27,8 +27,7 @@ maybe<T>
 
 template <typename T>
 constexpr
-maybe<T>::operator bool() const ->
-bool
+maybe<T>::operator bool() const
 {
   return has_value();
 }
@@ -112,6 +111,18 @@ const T&
     return this->template get<0>();
   else
     return f();
+}
+
+template <typename T>
+template <typename R, typename... Args>
+constexpr
+auto maybe<T>::ok_or(Args&&... args) ->
+either<T, R>
+{
+  if (this->template is<0>())
+    return either<T, R>::from_left(this->template get<0>());
+  else
+    return either<T, R>::from_right(std::forward<Args&&>(args)...);
 }
 
 template <typename T>

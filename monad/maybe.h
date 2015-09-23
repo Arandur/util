@@ -1,6 +1,7 @@
 #pragma once
 
 #include "variant.h"
+#include "either.h"
 
 class bad_maybe_access;
 
@@ -57,6 +58,11 @@ public:
   constexpr
   auto get_value_or_else(F&&) const ->
   const T&;
+
+  template <typename R, typename... Args>
+  constexpr
+  auto ok_or(Args&&...) ->
+  either<T, R>;
 
   template <typename F>
   constexpr
