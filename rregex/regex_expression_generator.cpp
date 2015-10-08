@@ -2,7 +2,8 @@
 
 regex_expression_generator::regex_expression_generator (
     std::vector<std::unique_ptr<regex_generator>>&& _alternatives) :
-  alternatives(std::move(_alternatives))
+  alternatives(std::move(_alternatives)),
+  dist(0, alternatives.size())
 {}
 
 regex_expression_generator::regex_expression_generator (
@@ -17,6 +18,7 @@ regex_expression_generator&
   alternatives.assign (
       std::make_move_iterator(std::begin(source.alternatives)),
       std::make_move_iterator(std::end(source.alternatives)));
+  dist.param(typename decltype(dist)::param_type(0, alternatives.size()));
 
   return *this;
 }
@@ -24,9 +26,5 @@ regex_expression_generator&
 auto regex_expression_generator::operator () () ->
 std::string
 {
-  auto dist =
-    std::uniform_int_distribution<
-      decltype(alternatives.size())>(0, alternatives.size());
-
-  return alternatives[dist(g)]();
+  return (*alternatives[dist(g)])();
 }

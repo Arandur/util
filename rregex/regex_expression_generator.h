@@ -21,10 +21,11 @@ public:
       regex_expression_generator&&) ->
     regex_expression_generator&;
 
-  virtual auto operator () () final override ->
-    std::string;
+  virtual auto operator () () ->
+    std::string final override;
 
 private:
 
   std::vector<std::unique_ptr<regex_generator>> alternatives;
+  std::uniform_int_distribution<decltype(alternatives.size())> dist;
 };
