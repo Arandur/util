@@ -2,9 +2,11 @@
 #include <cstdint>
 #include <utility>
 #include <random>
+#include <tuple>
 #include <algorithm>
 #include <iostream>
 #include <sstream>
+#include <set>
 
 struct vertex {
   uint32_t x, y;
@@ -36,39 +38,46 @@ std::ostream&
   return out << oss.str();
 }
 
-/**
- * This is highly imperfect; it uniformly chooses from a set of edges excluding
- * those along the bottom and right sides of the graph.
- *
- * This could be fixed by choosing the direction first (down or right), then 
- * choosing uniformly from those vertices which have vertices in those
- * directions.
- */
+struct vertex_cmp
+{
+  auto operator () (const vertex& v1, const vertex& v2) noexcept ->
+  bool
+  {
+    return std::tie(v1.x, v1.y) < std::tie(v2.x, v2.y);
+  }
+};
+
 template <typename URNG>
 auto random_edge (
     const uint32_t width, const uint32_t height,
     URNG&& g) ->
 edge
 {
-  std::uniform_int_distribution<uint32_t>
-    w_dist(0, width - 2),
-    h_dist(0, height - 2);
-
   std::uniform_int_distribution<uint8_t>
     b_dist(0, 1);
 
-  vertex v { w_dist(g), h_dist(g) };
+  if (b_dist(g)) { // Horizontal
+    std::uniform_int_distribution<uint32_t>
+      x_dist(0, width - 2),
+      y_dist(0, height - 1);
 
-  if (b_dist(g)) {
+    vertex v { x_dist(g), y_dist(g) };
+
     return {v, {v.x + 1, v.y}};
-  } else {
+  } else { // Vertical
+    std::uniform_int_distribution<uint32_t>
+      x_dist(0, width - 1),
+      y_dist(0, height - 2);
+
+    vertex v { x_dist(g), y_dist(g) };
+
     return {v, {v.x, v.y + 1}};
   }
 }
 
 auto calculate_boundary (
     const uint32_t width, const uint32_t height,
-    const std::vector<vertex>& vertices_in_map) ->
+    const std::set<vertex, vertex_cmp>& vertices_in_map) ->
 std::vector<edge>
 {
   std::vector<edge> boundary;
@@ -143,14 +152,13 @@ auto prim (
 std::vector<edge>
 {
   std::vector<edge> edges;
-  std::vector<vertex> vertices_in_map;
+  std::set<vertex, vertex_cmp> vertices_in_map;
 
   edges.reserve(width * height - 1);
-  vertices_in_map.reserve(width * height);
 
   edges.push_back(random_edge(width, height, g));
-  vertices_in_map.push_back(edges.back().a);
-  vertices_in_map.push_back(edges.back().b);
+  vertices_in_map.insert(edges.back().a);
+  vertices_in_map.insert(edges.back().b);
 
   while (true) {
     const std::vector<edge> boundary = 
@@ -161,8 +169,8 @@ std::vector<edge>
     }
 
     edges.push_back(random_choice(boundary, g));
-    vertices_in_map.push_back(edges.back().a);
-    vertices_in_map.push_back(edges.back().b);
+    vertices_in_map.insert(edges.back().a);
+    vertices_in_map.insert(edges.back().b);
   }
 
   return edges;
