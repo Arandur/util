@@ -53,6 +53,7 @@ auto operator << (
 std::ostream&
 {
   std::ostringstream oss;
-  oss << duration.count() << " " << detail::abbv<std::chrono::duration<Rep, Period>>::value;
+  oss << duration.count() << " " 
+      << detail::abbv<std::chrono::duration<Rep, Period>>::value;
   return out << oss.str();
 }

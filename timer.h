@@ -23,7 +23,9 @@ namespace detail
             std::chrono::steady_clock::duration,
             std::result_of_t<Fn(Args&&...)>>>
     {
-      return run(std::is_void<std::result_of_t<Fn(Args&&...)>>(), std::forward<Args&&>(args)...);
+      return run (
+          std::is_void<std::result_of_t<Fn(Args&&...)>>(),
+          std::forward<Args&&>(args)...);
     }
 
   private:
