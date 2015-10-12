@@ -86,7 +86,10 @@ public:
     reset();
     new (&buffer) nth_t<N, Args...>(std::forward<cArgs&&>(args)...);
     i = N + 1;
-    destructor = [this] { reinterpret_cast<nth_t<N, Args...>&>(buffer).~nth_t<N, Args...>(); };
+    destructor = [this] 
+    { 
+      reinterpret_cast<nth_t<N, Args...>&>(buffer).~nth_t<N, Args...>(); 
+    };
   }
 
   constexpr
@@ -141,9 +144,15 @@ protected:
 template <
   typename... Args>
 class variant :
-  public variant_base<variant, ! all<std::is_trivially_destructible, Args...>::value, Args...>
+  public variant_base <
+      variant, 
+      ! all<std::is_trivially_destructible, Args...>::value, 
+      Args...>
 {
-  typedef variant_base<variant, ! all<std::is_trivially_destructible, Args...>::value, Args...> Base;
+  using Base = variant_base <
+      variant, 
+      ! all<std::is_trivially_destructible, Args...>::value, 
+      Args...>;
 public:
 
   constexpr
