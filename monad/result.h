@@ -14,9 +14,7 @@ template <typename T>
 class result :
   public either<T, std::string>
 {
-  typedef either<T, std::string> Base;
-
-  using Base::Base;
+  using Base = either<T, std::string>;
 
 public:
 
@@ -117,5 +115,14 @@ public:
 
 private:
 
+  using Base::Base;
   using Base::get;
+
+  result(const Base& base) :
+    Base(base)
+  {}
+
+  result(Base&& base) :
+    Base(base)
+  {}
 };

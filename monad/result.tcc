@@ -5,7 +5,7 @@ auto result<T>::from_ok(Args&&... args)
   noexcept(noexcept(T(std::declval<Args&&>()...))) ->
 result<T>
 {
-  return Base::from_left(std::forward<Args&&>(args)...);
+  return static_cast<result<T>>(Base::from_left(std::forward<Args&&>(args)...));
 }
 
 template <typename T>

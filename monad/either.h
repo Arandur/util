@@ -17,7 +17,7 @@ template <typename L, typename R>
 class either :
   private variant<L, R>
 {
-  typedef variant<L, R> Base;
+  using Base = variant<L, R>;
 
   using Base::Base;
 
